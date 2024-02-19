@@ -35,6 +35,10 @@ classdef BackPropLayer
 
         b2
 
+        AS = [];
+
+        allS = [];
+
     end
 
     methods
@@ -121,17 +125,29 @@ classdef BackPropLayer
         function [obj] = Sensitivity(obj,s2,w2)
         switch(obj.transfer_function)% transfer functions
         case('logsig')
-            obj.s = obj.derlogsig(obj.out) * (w2' .* s2);
+            obj.s = obj.derlogsig(obj.out) * (w2' * s2);
         case('purelin')
-            obj.s = obj.derpurelin(obj.out) * (w2' .* s2);
+            obj.s = obj.derpurelin(obj.out) * (w2' * s2);
         end
         end
 
-        function obj = newWeight(obj,learningRate, prevA)
-            obj.w2 = obj.weight - learningRate*obj.s.*prevA';
+        function obj = newWeight(obj,learningRate, prevA, y)
+            obj.w2 = y .* obj.weight - ((1-y) * learningRate*obj.s.*prevA');
         end
-        function obj = newBias(obj,learningRate)
-            obj.b2 = obj.bias -learningRate*obj.s;
+
+        function grad = calcGradient(obj,prevA)
+            grad = obj.s.*prevA';
+        end
+        function obj = newBatchWeight(obj,learningRate,q)
+            obj.weight = obj.weight - ((learningRate /q)*obj.AS);
+        end
+        
+        function obj = newBatchBias(obj,learningRate,q)
+            obj.bias =  obj.bias -((learningRate /q).*obj.allS);
+        end
+
+        function obj = newBias(obj,learningRate, y)
+            obj.b2 = y .* obj.bias -((1-y) * learningRate.*obj.s);
         end
         function[obj] = setWeightBias(obj,w,b)
             obj.weight = w;
