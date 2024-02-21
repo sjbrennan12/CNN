@@ -1,51 +1,64 @@
 function [] = handWritingRecognition()
 %E711P2 Summary of this function goes here
 %   Detailed explanation goes here
-in = [-1 1 1 1 -1 1 -1 -1 -1 1 1 -1 -1 -1 1 1 -1 -1 -1 1 1 -1 -1 -1 1 -1 1 1 1 -1;%0
-      -1 1 1 -1 -1 -1 -1 1 -1 -1 -1 -1 1 -1 -1 -1 -1 1 -1 -1 -1 -1 1 -1 -1 -1 -1 1 -1 -1;%1
-      1 1 1 -1 -1 -1 -1 -1 1 -1 -1 -1 -1 1 -1 -1 1 1 -1 -1 -1 1 -1 -1 -1 -1 1 1 1 1;%2
-      ];
-out = [1 0 0 ; 0 1 0; 0 0 1]';
-result = []; 
-backPropNetwork = NetworkBackpropagation(2,30,3,'logsig');
-backPropNetwork.L(1) = BackPropLayer(30,15,'logsig');
-backPropNetwork.L(2) = BackPropLayer(15,3,'logsig');
+%built in matlab function to get nnet data
+
+training = convertMNIST('train-images.idx3-ubyte', 'train-labels.idx1-ubyte');
+test = convertMNIST('t10k-images.idx3-ubyte', 't10k-labels.idx1-ubyte');
+
+number = [1 0 0 0 0 0 0 0 0 0;%0
+          0 1 0 0 0 0 0 0 0 0;%1
+          0 0 1 0 0 0 0 0 0 0;%2
+          0 0 0 1 0 0 0 0 0 0;%3
+          0 0 0 0 1 0 0 0 0 0;%4
+          0 0 0 0 0 1 0 0 0 0;%5
+          0 0 0 0 0 0 1 0 0 0;%6
+          0 0 0 0 0 0 0 1 0 0;%7
+          0 0 0 0 0 0 0 0 1 0;%8
+          0 0 0 0 0 0 0 0 0 1;];%9
+
+backPropNetwork = NetworkBackpropagation(3,784,10,'logsig');
+backPropNetwork.L(1) = BackPropLayer(784,392,'logsig');
+backPropNetwork.L(2) = BackPropLayer(392,196,'logsig');
+backPropNetwork.L(3) = BackPropLayer(196,10,'logsig');
+
 performance = 0;
-performance4flip = 0;
-performance8flip = 0;
+result = [];
 q = 0;
 n = 1;
 figure('name',"Performance");
 title('Performance');
 
-for i = 1:100
+for i = 1:5000
+    %randomly select training batch
+    in = [];
+    out = [];
+    perm = randperm(7500,10);
+    %randomoly select validation values
     for s = 1:10
-    backPropNetwork = backPropNetwork.doBatchBackprop(0.9,in',out);
-    for j = 1:3
-    backPropNetwork = backPropNetwork.calcOutput(in(j,:)');
+    temp = training.images(:,:,perm(s))';
+    in(:,s) = temp(:);
+    out(:,s) = number(training.labels(perm(s),:)+1,:)';
+    end
+
+    backPropNetwork = backPropNetwork.doBatchBackprop(0.7,in,out);
+    for j = 1:10
+    backPropNetwork = backPropNetwork.calcOutput(in(:,j));
     performance = performance + backPropNetwork.meanSquareError(out(:,j));
-    backPropNetwork = backPropNetwork.calcOutput(addNoise(in(j,:)',4));
-    performance4flip = performance4flip + backPropNetwork.meanSquareError(out(:,j));
-    backPropNetwork = backPropNetwork.calcOutput(addNoise(in(j,:)',8));
-    performance8flip = performance8flip + backPropNetwork.meanSquareError(out(:,j));
+    
     q = q + 1;
     end
-    end
-    result(1,n) = performance/q;
-    result(2,n) = performance4flip/q;
-    result(3,n) = performance8flip/q;
+    result(n) = performance/q;
     n = n + 1;
 end
 
 hold on;
 plot(result(1,:));
-plot(result(2,:));
-plot(result(3,:));
+
 hold off;
-legend('0 bits flipped', '4 bits flipped', '8 bits flipped');
+%legend('0 bits flipped', '4 bits flipped', '8 bits flipped');
 disp(performance/q);
-disp(backPropNetwork.L(2).out);
-backPropNetwork.calcOutput(in(1,:)');
+
 
 end
 
