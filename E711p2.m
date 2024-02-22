@@ -18,6 +18,7 @@ n = 1;
 figure('name',"Performance");
 title('Performance');
 
+
 for i = 1:100
     for s = 1:10
     backPropNetwork = backPropNetwork.doBatchBackprop(0.9,in',out);
@@ -46,6 +47,16 @@ legend('0 bits flipped', '4 bits flipped', '8 bits flipped');
 disp(performance/q);
 disp(backPropNetwork.L(2).out);
 backPropNetwork.calcOutput(in(1,:)');
+
+figure();
+imagesc(backPropNetwork.L(1).weight);
+colormap(hsv);
+colorbar;
+
+figure();
+imagesc(backPropNetwork.L(2).weight);
+colormap(hsv);
+colorbar;
 
 end
 
