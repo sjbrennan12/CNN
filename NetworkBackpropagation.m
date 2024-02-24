@@ -1,46 +1,57 @@
 classdef NetworkBackpropagation
-    %NETWORKBACKPROPAGATION Summary of this class goes here
-    %   Detailed explanation goes here
+    %NetworkBackpropagation is responsible for the operations on the whole
+    %neural network and will calculate the forward output, and complete
+    %backpropagation
     
     properties
-      L BackPropLayer;
+      L BackPropLayer;%holds alls the layers for the network 
     end
     
     methods
         function obj = NetworkBackpropagation(numLayers,inputs, outputs,transferFunction)
+            %constructor that will set the initial number of layers and
+            %weight and bias sizes. Initially the layers will have weights
+            %and biases that are the same example a network with 20 inputs
+            %and 2 outputs and 2 layers will have a network that looks like
+            %20 20 2
            for i = 1:(numLayers -1) 
-            obj.L(i) = BackPropLayer(inputs,inputs,transferFunction);
+            obj.L(i) = BackPropLayer(inputs,inputs,transferFunction);%construct all layers except final layer
            end
-            obj.L(numLayers) = BackPropLayer(inputs,outputs,transferFunction);
+            obj.L(numLayers) = BackPropLayer(inputs,outputs,transferFunction);%final layer output matches the provided output
             
         end
         
         function obj = calcOutput(obj,input)
-        nextLayer = input;
+            %takes the input and passes it through each layer and moves
+            %the output through the remaining layers until the end
+        nextLayer = input;%input into the layer
         for i = 1:length(obj.L)
-        obj.L(i) = obj.L(i).forward(nextLayer);
-        nextLayer = obj.L(i).out;
+        obj.L(i) = obj.L(i).forward(nextLayer);% find the output of the layer from the input
+        nextLayer = obj.L(i).out;%save the output for the next layer as an input
         end
         %display(nextLayer);
         end
 
         function obj = doBatchBackprop(obj,learningRate,inputs,targets)
-
-        [row,col] = size(inputs);
-         obj = obj.calcOutput(inputs(:,1));
-         obj.L(length(obj.L)) = obj.L(length(obj.L)).firstSensitivity(targets(:,1));
+        %batch propagation function that takes a matrix of inputs and
+        %targets and calculates the next weight and bias values
+        [row,col] = size(inputs);%used to determine the size of multiple loops
+        %this section is run first to initialize the AS and allS size
+        %before processing the other inputs
+         obj = obj.calcOutput(inputs(:,1));% start process by calculating outputs
+         obj.L(length(obj.L)) = obj.L(length(obj.L)).firstSensitivity(targets(:,1));%find all layer sensitivities
          for i = (length(obj.L) - 1):-1:1
          obj.L(i) = obj.L(i).Sensitivity(obj.L(i+1).s,obj.L(i+1).weight);    
          end
 
-         for i = length(obj.L):-1:2
+         for i = length(obj.L):-1:2%calculate all gradients and sensitivites for each layer and save them in the total
          obj.L(i).AS = obj.L(i).calcGradient(obj.L(i-1).out); 
          obj.L(i).allS = obj.L(i).s;
          end
          obj.L(1).AS = obj.L(1).calcGradient(obj.L(1).in); 
          obj.L(1).allS = obj.L(1).s;
 
-        for p = 2:col
+        for p = 2:col% for the remaining inputs add sensitivities and gradients to total
             obj = obj.calcOutput(inputs(:,p));
             %calculate sensitivities and outputs
             obj.L(length(obj.L)) = obj.L(length(obj.L)).firstSensitivity(targets(:,p));
@@ -59,7 +70,7 @@ classdef NetworkBackpropagation
             
         %Calculate new weights and biases from batch and set values 
 
-        for i = 1:length(obj.L)
+        for i = 1:length(obj.L)% calculate a new batch weight and bias for every layer 
         obj.L(i) = obj.L(i).newBatchWeight(learningRate,col); 
         obj.L(i) = obj.L(i).newBatchBias(learningRate,col);
         end
@@ -68,10 +79,10 @@ classdef NetworkBackpropagation
        
         end
 
-        function obj = doBackprop(obj,learningRate,target)
+        function obj = doBackprop(obj,learningRate,target)%single input output backprop
         %calculate sensitivities 
-        obj.L(length(obj.L)) = obj.L(length(obj.L)).firstSensitivity(target);
-        for i = (length(obj.L) - 1):-1:1
+        obj.L(length(obj.L)) = obj.L(length(obj.L)).firstSensitivity(target);%calculate first sensitivity 
+        for i = (length(obj.L) - 1):-1:1%calculate all remaining sensitivities
         obj.L(i) = obj.L(i).Sensitivity(obj.L(i+1).s,obj.L(i+1).weight);    
         end
         %Calculate new weights and biases
@@ -90,8 +101,8 @@ classdef NetworkBackpropagation
         end
         
         function E = meanSquareError(obj,target)
-        a = obj.L(length(obj.L)).out;
-        E = (target - a)' * (target - a);
+        a = obj.L(length(obj.L)).out;%calculate the forward output
+        E = (target - a)' * (target - a);%mean squared error
         end
     end
 end

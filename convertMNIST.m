@@ -1,6 +1,6 @@
 function [ dataset ] = convertMNIST( image_file, label_file )
 %CONVERTMNIST Converts the original MNIST dataset into MATLAB format.
-
+% Author Markus Mayer, Github: https://github.com/sunsided/mnist-matlab.git
     if exist('image_file', 'var') && exist('label_file', 'var')
         
         ifid = fopen(image_file, 'rb');
