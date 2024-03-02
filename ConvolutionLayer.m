@@ -22,6 +22,8 @@ classdef ConvolutionLayer
 
         s %sensitivity vector
 
+        p %pool layer
+
         Kernel2 %new kernel  
 
         b2 %new bias
@@ -66,6 +68,7 @@ classdef ConvolutionLayer
 
             obj.n = output;%before transfer function
             output = temp;
+            obj.p = temp;
             switch(obj.transfer_function)% transfer functions
                 case('relu')
                     obj.out = obj.relu_(output);
@@ -98,8 +101,35 @@ classdef ConvolutionLayer
 
        
 
-        function [obj] = Sensitivity(obj,s2,w2)
-           
+        function [obj] = Sensitivity(obj,s2,inputKernel)
+           %Part1 Push sensitivities through pooling 
+            beforePool = [];
+            [rows, cols] = size(s2);
+            for l = 1:obj.Outsize
+                beforePool(:,:,l) = zeros(size(obj.n(:,:,1)));
+             
+                for x = 1:rows
+                    for y = 1:cols
+                        for i = ((x-1)*obj.Pool + 1):((x-1)*obj.Pool + obj.Pool)
+                        for j = ((y-1)*obj.Pool + 1):((y-1)*obj.Pool + obj.Pool)  
+                        if(obj.n(i,j,l) == obj.p(x,y,l))
+                           beforePool(i,j,l) =  obj.p(x,y,l);    
+                        end
+                        end
+                        end
+                    end
+                end
+            end
+
+           %Part2 Calculate sensitivities before RELU
+
+           %Reverse convolution 
+           for i = 1:obj.Outsize
+               for j = 1:obj.KernelDepth
+            obj.s(:,:,j,i) = derrelu(obj,beforePool(:,:,i))* conv2(s2,rot90(rot90(inputKernel(:,:,j,i))),'full');
+               end
+           end
+
         end
 
         function obj = newWeight(obj,learningRate, prevA)
@@ -133,7 +163,12 @@ classdef ConvolutionLayer
         function a = relu_(~,p)
         a = max(0,p);
         end
+        
+        function a = derrelu(~,p)
+        a = max(0,p);
+        a = min(1,p);
 
+        end
         function a = derlogsig(~,p)
         a = (eye(length(p)).*((1-p).*p));%returns dervivitive of logsig for calulating the sensativity
         %Verified with example sensitivity calculations 
