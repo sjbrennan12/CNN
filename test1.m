@@ -7,6 +7,8 @@ result = [];
 backPropNetwork = NetworkBackpropagation(2,1,1,'logsig');
 backPropNetwork.L(1) = BackPropLayer(1,2,'logsig');
 backPropNetwork.L(2) = BackPropLayer(2,1,'purelin');
+result = backPropNetwork.forward(in);
+disp(result);
 performance = 0;
 q = 0;
 n = 1;

@@ -112,6 +112,14 @@ classdef NetworkBackpropagation
        
         end
 
+        function output = forward(obj, input)
+            % Apply convolution operation using the first layer
+            output = conv2(input, obj.L(1).weight, 'valid');
+            
+            % Apply ReLU activation
+            output = max(output, 0);
+        end
+
         function obj = doBackprop(obj,learningRate, input, target)%single input output backprop
             output = forward(obj, input, target);
 
