@@ -75,29 +75,65 @@ classdef NetworkBackpropagation
         obj.L(i) = obj.L(i).newBatchBias(learningRate,col);
         end
         
+        function obj = calculate_sensitivities(obj, output, target, i)
+            % calculate_sensitivities
+            % Perform an iteration of the backpropagation algorithm.
+            % Each layer saves the sensitivities of the weights.
+            % Weights are not updated here; use the update function in the Layer class.
+        
+            error = Error(target, output);
+            
+            % Compute sensitivity for the last layer
+            result = output .* (1 - output);
+            F_dot = diag(result);
+            sens = -2 * F_dot * error;
+            obj.L(end).Sensitivity = sens;
+        
+            % Backpropagate sensitivity through the layers
+            for j = length(obj.L) - 1:-1:i
+                nextSens = obj.L(j + 1).Sensitivity;
+                currAct = obj.L(j).Output;
+                p_derv = currAct .* (1 - currAct);
+                F_dot = diag(p_derv);
+                sens = F_dot * obj.L(j + 1).Weights' * nextSens;
+                obj.L(j).Sensitivity = sens;
+            end
+        end
+
+
+         function error = Error(~,t,a)
+            % error
+            % calculates the error of:
+            % the target vector T
+            % the actual vector a
+               error = t-a;
+         end
 
        
         end
 
-        function obj = doBackprop(obj,learningRate,target)%single input output backprop
-        %calculate sensitivities 
-        obj.L(length(obj.L)) = obj.L(length(obj.L)).firstSensitivity(target);%calculate first sensitivity 
-        for i = (length(obj.L) - 1):-1:1%calculate all remaining sensitivities
-        obj.L(i) = obj.L(i).Sensitivity(obj.L(i+1).s,obj.L(i+1).weight);    
-        end
-        %Calculate new weights and biases
-        for i = length(obj.L):-1:2
-        obj.L(i) = obj.L(i).newWeight(learningRate,obj.L(i -1).out); 
-        obj.L(i) = obj.L(i).newBias(learningRate);
-        end
-        obj.L(1) = obj.L(1).newWeight(learningRate,obj.L(1).in); 
-        obj.L(1) = obj.L(1).newBias(learningRate);
-        
+        function obj = doBackprop(obj,learningRate, input, target)%single input output backprop
+            output = forward(obj, input, target);
 
-        %set new weights and biases
-        for i = length(obj.L):-1:1
-        obj.L(i) = obj.L(i).setWeightBias(obj.L(i).w2,obj.L(i).b2);
-        end
+            %calculate sensitivities 
+            obj.L(length(obj.L)) = obj.L(length(obj.L)).firstSensitivity(target);%calculate first sensitivity 
+            for i = (length(obj.L) - 1):-1:1%calculate all remaining sensitivities
+                obj.L(i) = calculate_sensitivities(obj, output, target, i);    
+            end
+            
+            %Calculate new weights and biases
+            for i = length(obj.L):-1:2
+                obj.L(i) = obj.L(i).newWeight(learningRate,obj.L(i -1).out); 
+                obj.L(i) = obj.L(i).newBias(learningRate);
+            end
+            obj.L(1) = obj.L(1).newWeight(learningRate,obj.L(1).in); 
+            obj.L(1) = obj.L(1).newBias(learningRate);
+            
+    
+            %set new weights and biases
+            for i = length(obj.L):-1:1
+                obj.L(i) = obj.L(i).setWeightBias(obj.L(i).w2,obj.L(i).b2);
+            end
         end
         
         function E = meanSquareError(obj,target)
