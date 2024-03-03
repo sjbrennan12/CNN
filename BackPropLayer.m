@@ -1,4 +1,22 @@
 classdef BackPropLayer
+     %BACKPROPLAYER Implements a network layer that calculates sensitivity of
+     % the layer and caculate the new weights and biases of the layer
+     % Methods:
+     %    - BackPropLayer (Constructor)
+     %    - forward
+     %    - print
+     %    - firstSensitivity
+     %    - Sensitivity
+     %    - newWeight
+     %    - calcGradient
+     %    - newBatchWeight
+     %    - newBatchBias
+     %    - newBias
+     %    - setWeightBias
+     % Transfer functions:
+     %    - logisig
+     %    - purelin
+     
      properties
         weight
         %Weight Matrix to matrix multiply with the input.
@@ -74,7 +92,7 @@ classdef BackPropLayer
 
             % Assign the transfer_function string to the transfer_function property.
             obj.transfer_function = transfer_function;
-        end
+        end % end of constructor
 
         function [obj] = forward(obj, input)
            %forward takes the object and input vector and produces the
@@ -91,11 +109,7 @@ classdef BackPropLayer
                 case('purelin')
                    obj.out = obj.purelin_(output')';% return output after transfer function
             end
-             
-          
-        end
-
-        
+        end % end of forward function
 
         function print(obj) 
             %Prints weights and biases to console
@@ -108,25 +122,27 @@ classdef BackPropLayer
         function [obj] = firstSensitivity(obj,t)
             %calculates the sensativity for the layer at the end of the
             %network using the equation s = -2dF(n)(t-a)
-        switch(obj.transfer_function)% transfer functions
-        case('logsig')
-            obj.s = -2*obj.derlogsig(obj.out)*(t-obj.out);
-        case('purelin')
-            obj.s = -2*obj.derpurelin(obj.out)*(t-obj.out);
-        end
-        end
+
+            switch(obj.transfer_function)% transfer functions
+                case('logsig')
+                    obj.s = -2*obj.derlogsig(obj.out)*(t-obj.out);
+                case('purelin')
+                    obj.s = -2*obj.derpurelin(obj.out)*(t-obj.out);
+            end
+        end % end of firstSensitivity function
 
         function [obj] = Sensitivity(obj,s2,w2)
             %calculates the sensativity for all layers except the final
             %layer by using backpropagation of the previous calculated
             %sensativities and previous layers weight. s = dF(n)Ws
-        switch(obj.transfer_function)% transfer functions
-        case('logsig')
-            obj.s = obj.derlogsig(obj.out) * (w2' * s2);
-        case('purelin')
-            obj.s = obj.derpurelin(obj.out) * (w2' * s2);
-        end
-        end
+
+            switch(obj.transfer_function)% transfer functions
+                case('logsig')
+                    obj.s = obj.derlogsig(obj.out) * (w2' * s2);
+                case('purelin')
+                    obj.s = obj.derpurelin(obj.out) * (w2' * s2);
+            end
+        end % end of Sensitivity function
 
         function obj = newWeight(obj,learningRate, prevA)
             %calculates the updated weight by using the equation 
@@ -138,6 +154,7 @@ classdef BackPropLayer
             %provides the gradient for functions in the Network class
             grad = obj.s.*prevA';
         end
+
         function obj = newBatchWeight(obj,learningRate,q)
             %batch propagation version of the weight calculation
             obj.weight = obj.weight - ((learningRate /q)*obj.AS);
@@ -152,31 +169,34 @@ classdef BackPropLayer
             %bias calculation that uses the equation new b = b - as
             obj.b2 = obj.bias -( learningRate.*obj.s);
         end
+
         function[obj] = setWeightBias(obj,w,b)
             %used to update the weights and biases to the inputs and this
             %allows for initial weights to be set and the new biases and
             %weights to be set
+
             obj.weight = w;
             obj.bias = b;
         end
-    end
+    end % end of public methods
 
 
     methods (Access = private)
         % Private methods to be used within the BackProp Layer
 
         function a = derlogsig(~,p)
-        a = (eye(length(p)).*((1-p).*p));%returns dervivitive of logsig for calulating the sensativity
-        %Verified with example sensitivity calculations 
+            %returns dervivitive of logsig for calulating the sensativity
+            a = (eye(length(p)).*((1-p).*p));
+            %Verified with example sensitivity calculations 
         end
 
         function a = derpurelin(~,p)
-        a = 1;% dervititive of purelin 
+            a = 1;% dervititive of purelin 
         end
         
         function a = logsig_(~,p)
             %equation 1/(1+e^-x)
-        a = logsig(p);%matlab provided function
+            a = logsig(p);%matlab provided function
         end
 
         function a = purelin_(~, p)
@@ -186,8 +206,8 @@ classdef BackPropLayer
             %   a = -1, n < 0
             %   a = +1, n => 0
 
-             a = p;
+            a = p;
         end
-    end
-end
+    end % end of private methods
+end % end of BackpropLayer class
 
