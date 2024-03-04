@@ -51,29 +51,31 @@ classdef ConvolutionLayer
     end
 
     methods
-        function obj = ConvolutionLayer(OutputSize, KernelWidth,KernelHeight, KernelDepth,poolSize, transfer_function)
+        function obj = ConvolutionLayer(OutputSize, KernelSize, KernelDepth,poolSize, transfer_function)
             %CONVOLUTIONLAYER Initializes the layer with kernal matricies, bias,
             % pooliing size, tranfer function and no of output channels of the 
             % layer.
            
             % iterate over each output channel and create bias vector and
             % initialize kernels kernel size 
-            for i = 1:OutputSize
-                %bias is applied to every output in matrix
-                obj.bias(i) = (-0.5 + 1 * rand());
 
-                %iterate over number of input channels (kernel depth) and
-                % crate random kernal values between 0.5 and -0.5
-                for j = 1:KernelDepth
-                    obj.Kernels(:,:,j,i) = (-0.5 + 1 * rand(KernelWidth, KernelHeight))';
-                end
-            end
+            % for i = 1:OutputSize
+            %     %bias is applied to every output in matrix
+            %     obj.bias(i) = (-0.5 + 1 * rand());
+            % 
+            %     %iterate over number of input channels (kernel depth) and
+            %     % crate random kernal values between 0.5 and -0.5
+            %     for j = 1:KernelDepth
+            %         obj.Kernels(:,:,j,i) = (-0.5 + 1 * rand(KernelWidth, KernelHeight))';
+            %     end
+            % end
             obj.Pool = poolSize;
             obj.Outsize = OutputSize;
             obj.KernelDepth = KernelDepth;
-
-            % Assign the transfer_function string to the transfer_function property.
             obj.transfer_function = transfer_function;
+
+            obj.bias = -0.5 + 1 * rand(1,OutputSize);
+            obj.Kernels = -0.5 + 1 * rand(KernelSize, KernelSize, KernelDepth, OutputSize) ; 
         end % end of constructor
 
         function [obj] = forward(obj, input)
