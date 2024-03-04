@@ -81,11 +81,11 @@ classdef ConvolutionLayer
             % convolution, bias addition, and transfer function. The input to
             % the network should be in format (height x width x channels)
 
+            % perform convlution
             obj.in = input;
             % iterate over number of output channels
             for i = 1:obj.Outsize 
                 output(:,:,i) = conv2(obj.Kernels(:,:,1,i),input(:,:,1),'same');
-
                 % for each input channel
                 for j= 1:obj.KernelDepth
                     output(:,:,i) = output(:,:,i) + conv2(obj.Kernels(:,:,j,i),input(:,:,j),'same');
@@ -93,14 +93,15 @@ classdef ConvolutionLayer
                 output(:,:,i) = output(:,:,i) + obj.bias(i);
             end
 
+            obj.n = output; % store the net input of the forward method
+
             %pooling
             temp = []; 
             for l = 1:obj.Outsize
                 temp(:,:,l) = obj.pooling(output(:,:,l));
             end
             
-            %before transfer function
-            obj.n = output;
+            % activation
             output = temp;
             obj.p = temp;
             switch(obj.transfer_function)% transfer functions
@@ -115,7 +116,6 @@ classdef ConvolutionLayer
 
         function pooled = pooling(obj,input)
             %POOLING performs pooling operation on input after convolution
-
             [rows, cols] = size(input);
             pooled = zeros(round(rows/obj.Pool),round(cols/obj.Pool));
 
@@ -134,8 +134,6 @@ classdef ConvolutionLayer
                 end
             end
         end % end of pooling function
-
-       
 
         function [obj] = Sensitivity(obj,s2,inputKernel)
             % Calculate Sensitivities for layer
@@ -169,7 +167,8 @@ classdef ConvolutionLayer
         end % end of Sensitivities method
 
         function obj = newWeight(obj,learningRate, prevA)
-            %TODO
+            % Update kernel
+            obj.Kernel2 = obj.Kernels - learningRate * calcGradient(obj,prevA);
         end
 
         function grad = calcGradient(obj,prevA)
@@ -177,20 +176,29 @@ classdef ConvolutionLayer
             grad = obj.s.*prevA';
         end
 
-        function obj = newBatchWeight(obj,learningRate,q)
-          %TODO
+        function obj = newBatchWeight(obj,learningRate,q, prevA)
+          %Batch kernel update
+          batchSize = size(obj.s,1);
+          gradient = sum(obj.s .* prevA, [1 2]) / batchSize;
+          obj.Kernel2 = obj.Kernels - (learningRate / q) * gradient;
         end
         
         function obj = newBatchBias(obj,learningRate,q)
-          %TODO
+            %Batch bias update
+            batchSize = size(obj.s, 1); % Get the batch size
+            gradient = sum(obj.s, [1 2]) / batchSize; % Compute average gradient
+            obj.b2 = obj.bias - (learningRate / q) * gradient;
         end
 
         function obj = newBias(obj,learningRate)
-            %TODO
+            % update bias
+            obj.b2 = obj.bias - learningRate * obj.s;
         end
 
         function[obj] = setWeightBias(obj,w,b)
-           %TODO
+            % set weights and biases with given weights and bias matrices
+           obj.Kernels = w;
+           obj.bias = b;
         end
     end % end of public methods
 
