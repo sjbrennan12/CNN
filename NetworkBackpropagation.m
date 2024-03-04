@@ -13,21 +13,33 @@ classdef NetworkBackpropagation
     %    - meanSquareError
     
     properties
-      L BackPropLayer;%holds alls the layers for the network 
+      % L BackPropLayer;%holds alls the layers for the network
+      convLayers % holds all the layers for the network
+      backpropLayers
     end
     
     methods
-        function obj = NetworkBackpropagation(numLayers,inputs, outputs,transferFunction)
-            %constructor that will set the initial number of layers and
-            %weight and bias sizes. Initially the layers will have weights
-            %and biases that are the same example a network with 20 inputs
-            %and 2 outputs and 2 layers will have a network that looks like
-            %20 20 2
+        function obj = NetworkBackpropagation(numConvLayers, numFCLayers, inputs, outputs,conv_tf, fc_tf)
+            % Constructor that sets the initial number of layers and
+            % weight and bias sizes. The layers array will contain both
+            % convolutional and fully connected layers.
 
-           for i = 1:(numLayers -1) 
-            obj.L(i) = BackPropLayer(inputs,inputs,transferFunction);%construct all layers except final layer
-           end
-            obj.L(numLayers) = BackPropLayer(inputs,outputs,transferFunction);%final layer output matches the provided output
+            % for i = 1:(numLayers -1) 
+            %  obj.L(i) = BackPropLayer(inputs,inputs,transferFunction);%construct all layers except final layer
+            % end
+            %  obj.L(numLayers) = BackPropLayer(inputs,outputs,transferFunction);%final layer output matches the provided output
+
+            % Create an array of ConvolutionLayer objects
+            obj.convLayers = ConvolutionLayer.empty(0, numConvLayers);
+            for i = 1:numConvLayers
+                obj.ConvLayers(i) = ConvolutionLayer("arguments");
+            end
+
+            % Create an array of BackPropLayer objects
+            obj.backpropLayers = BackPropLayer.empty(0, numFCLayers);
+            for i = 1:numFCLayers
+                obj.BackpropLayers(i) = BackPropLayer("arguments");
+            end
         end % end of constructor
         
         function obj = calcOutput(obj,input)
