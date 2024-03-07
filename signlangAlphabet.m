@@ -38,10 +38,10 @@ number = [1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0;%0
           0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1;];%25
 
 %generate multilayer netowrk
-backPropNetwork = NetworkBackpropagation(3,784,26,'logsig');%num layers, input, output
-backPropNetwork.L(1) = BackPropLayer(784,392,'logsig');%specifiy input and output size and transfer function
-backPropNetwork.L(2) = BackPropLayer(392,196,'logsig');
-backPropNetwork.L(3) = BackPropLayer(196,26,'logsig');
+backPropNetwork = NetworkBackpropagation(3,2,3,784,26,'logsig');%num layers, input, output
+%backPropNetwork.L(1) = BackPropLayer(784,392,'logsig');%specifiy input and output size and transfer function
+%backPropNetwork.L(2) = BackPropLayer(392,196,'logsig');
+%backPropNetwork.L(3) = BackPropLayer(196,26,'logsig');
 
 performance = 0;%training data mean squared error
 verifyPerformance = 0;%validation data mean squared error
@@ -51,7 +51,8 @@ n = 1;% epoch
 figure('name',"Performance Mean Squared Error");
 title('Performance');
 
-for i = 1:20
+for i = 1:5
+    i
     %select training batch
     in = [];
     out = [];
@@ -59,24 +60,25 @@ for i = 1:20
     %randomoly select validation values
     inVerify = [];
     outVerify = [];
-    for count = 1:100:(length(perm) - 100)%for all training data
+    for count = 1:length(perm)%for all training data
     permVerify = randperm(3427,100) + 20600;%select random verify set values
-    for s = 1:100 %load training data and verify values into batches
-    in(:,s) = training(perm(count +s),3:786);
-    out(:,s) = number(training(perm(count +s),2)+1,:)';
-    inVerify(:,s) = training(permVerify(s),3:786);
-    outVerify(:,s) = number(training(permVerify(s),2)+1,:)';
-    end
-
-    backPropNetwork = backPropNetwork.doBatchBackprop(5,in,out);%perform batch backprop
-    for j = 1:100%calculate mean squared error of output for training and verify set
-    backPropNetwork = backPropNetwork.calcOutput(in(:,j));
-    performance = performance + backPropNetwork.meanSquareError(out(:,j));
-    backPropNetwork = backPropNetwork.calcOutput(inVerify(:,j));
-    verifyPerformance = verifyPerformance + backPropNetwork.meanSquareError(outVerify(:,j));
+    
+    in(:,1) = training(perm(count),3:786)/255;
+    out(:,1) = number(training(perm(count),2)+1,:)';
+    inVerify(:,1) = training(permVerify(1),3:786)/255;
+    outVerify(:,1) = number(training(permVerify(1),2)+1,:)';
+    squareIn = reshape(in,28,28)';
+    backPropNetwork = backPropNetwork.calcOutput(squareIn);
+    backPropNetwork = backPropNetwork.doBackprop(0.01,out);%perform backprop
+    %calculate mean squared error of output for training and verify set
+    backPropNetwork = backPropNetwork.calcOutput(squareIn);
+    performance = performance + backPropNetwork.meanSquareError(out(:,1));
+    backPropNetwork = backPropNetwork.calcOutput(reshape(inVerify,28,28)');
+    verifyPerformance = verifyPerformance + backPropNetwork.meanSquareError(outVerify(:,1));
     q = q + 1;
-    end 
+    
     end
+    performance/q
     result(1,n) = performance/q;%store training performance for current epoch
     result(2,n) = verifyPerformance/q;%store validation performance for current epoch
     n = n + 1;
@@ -95,7 +97,7 @@ temp = [];
 finalLayer = length(backPropNetwork.L);
 
 for i =1:7172% for all test data 
-backPropNetwork = backPropNetwork.calcOutput(test(i,2:785)');
+backPropNetwork = backPropNetwork.calcOutput(reshape(test(i,2:785),28,28)');
 max = backPropNetwork.L(finalLayer).out(1);
 number = 0;
 for j = 2:26%find max output number 
@@ -111,7 +113,7 @@ writetable(categories,'TestOutput.csv');
 
 pass = 0;
 for i =24027:27455% for all test data
-backPropNetwork = backPropNetwork.calcOutput(training(i,3:786)');
+backPropNetwork = backPropNetwork.calcOutput(reshape(training(i,3:786),28,28)');
 max = backPropNetwork.L(finalLayer).out(1);
 number = 0;
 for j = 2:10%find max output number 

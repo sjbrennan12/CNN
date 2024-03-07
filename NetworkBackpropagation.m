@@ -29,17 +29,17 @@ classdef NetworkBackpropagation
            obj.C(i) = ConvolutionLayer(i*4,KernelSize,KernelSize,currentDepth,2,'relu');
            currentDepth = i*4;
            end
-           InputSize = currentDepth * (inputs/4*length(obj.C));%calculate size of input after convolution layer 
+           InputSize = 648;%If number is wrong will update during forward
            % #outputs * size of outputs at end of convolution layers
            for i = 1:(numConnectedLayers -1) 
             obj.L(i) = BackPropLayer(InputSize,InputSize,transferFunction);%construct all layers except final layer
            end
-            obj.L(numLayers) = BackPropLayer(InputSize,outputs,transferFunction);%final layer output matches the provided output
+            obj.L(numConnectedLayers) = BackPropLayer(InputSize,outputs,transferFunction);%final layer output matches the provided output
             
         end
         % end of constructor
 
-        function output = flattenOutput(obj,input)
+        function output = flattenOutput(~,input)
         %3d input from convolutional neural network to vector
         n = 1;
         output = [];
@@ -61,10 +61,19 @@ classdef NetworkBackpropagation
         nextLayer = input;%input into the layer
         for i = 1:length(obj.C)%first input into convolutional layer
         obj.C(i) = obj.C(i).forward(nextLayer);
-        nextLayer = obj.L(i).out;
+        nextLayer = obj.C(i).out;
         end
-        nextLayer = flattenOutput(nextLayer);%flatten the output to the fully connected layer
+        nextLayer = obj.flattenOutput(nextLayer);%flatten the output to the fully connected layer
+
+        if length(nextLayer) ~= length(obj.L(1).weight(:,1))%check if estimated output size is correct if not modify fully connected layers
+        for i = 1:length(obj.L) -1
+        obj.L(i) = BackPropLayer(length(nextLayer),length(nextLayer),obj.L(i).transfer_function);
+        end
+        obj.L(length(obj.L)) = BackPropLayer(length(nextLayer),length(obj.L(length(obj.L)).weight(1,:)),obj.L(length(obj.L)).transfer_function);
+        end
+        nextLayer = nextLayer';
         for i = 1:length(obj.L)
+        
         obj.L(i) = obj.L(i).forward(nextLayer);% find the output of the layer from the input
         nextLayer = obj.L(i).out;%save the output for the next layer as an input
         end
@@ -121,7 +130,7 @@ classdef NetworkBackpropagation
         obj.L(i) = obj.L(i).Sensitivity(obj.L(i+1).s,obj.L(i+1).weight);    
         end
         %calculate sensitivities for the convolutional layer
-        obj.C(length(obj.C)) = obj.C(length(obj.L)).vectorSensitivity(obj.L(1).s,obj.L(1).weight);
+        obj.C(length(obj.C)) = obj.C(length(obj.C)).vectorSensitivity(obj.L(1).s,obj.L(1).weight);
        
         for i = (length(obj.C) - 1):-1:1%calculate all remaining sensitivities for convolutional layers
         obj.C(i) = obj.C(i).Sensitivity(obj.C(i+1).s,obj.C(i+1).Kernels);    
@@ -133,6 +142,7 @@ classdef NetworkBackpropagation
         end
         obj.L(1) = obj.L(1).newWeight(learningRate,obj.L(1).in); 
         obj.L(1) = obj.L(1).newBias(learningRate);
+
         for i = length(obj.C):-1:2
         obj.C(i) = obj.C(i).newWeight(learningRate,obj.C(i -1).out); 
         obj.C(i) = obj.C(i).newBias(learningRate);
@@ -141,7 +151,7 @@ classdef NetworkBackpropagation
         obj.C(1) = obj.C(1).newBias(learningRate);
         %set new weights and biases
         for i = length(obj.L):-1:1
-        obj.L(i) = obj.L(i).setWeightBias(obj.L(i).Kernel2,obj.L(i).b2);
+        obj.L(i) = obj.L(i).setWeightBias(obj.L(i).w2,obj.L(i).b2);
         end
         for i = length(obj.C):-1:1
         obj.C(i) = obj.C(i).setWeightBias(obj.C(i).Kernel2,obj.C(i).b2);
