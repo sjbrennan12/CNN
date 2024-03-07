@@ -69,7 +69,7 @@ classdef NetworkBackpropagation
         for i = 1:length(obj.L) -1
         obj.L(i) = BackPropLayer(length(nextLayer),length(nextLayer),obj.L(i).transfer_function);
         end
-        obj.L(length(obj.L)) = BackPropLayer(length(nextLayer),length(obj.L(length(obj.L)).weight(1,:)),obj.L(length(obj.L)).transfer_function);
+        obj.L(length(obj.L)) = BackPropLayer(length(nextLayer),length(obj.L(length(obj.L)).weight(:,1)),obj.L(length(obj.L)).transfer_function);
         end
         nextLayer = nextLayer';
         for i = 1:length(obj.L)
