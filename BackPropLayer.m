@@ -1,6 +1,6 @@
 classdef BackPropLayer
-     %BACKPROPLAYER Implements a network layer that calculates sensitivity of
-     % the layer and caculate the new weights and biases of the layer
+     %BACKPROPLAYER Implements a network layer that calculates layer outputs, 
+     % sensitivities, and parameters of a fully connected layer. 
      % Methods:
      %    - BackPropLayer (Constructor)
      %    - forward
@@ -15,37 +15,37 @@ classdef BackPropLayer
      %    - setWeightBias
      % Transfer functions:
      %    - logisig
+     %    - derlogsig
      %    - purelin
+     %    - derpurelin
      
      properties
         weight
-        %Weight Matrix to matrix multiply with the input.
-        %   is either specified by the client or generated using using random
-        %   values uniformly distributed in the range [-1, +1]
+        % Weight Matrix to matrix multiply with the input.
+        % is either specified by the client or generated using random
+        % values uniformly distributed in the range [-1, +1]
         %
-        %   When generated, the dimensions of the matrix will be 
-        %   arg1 = rows = number of inputs
-        %   arg2 = cols = number of outputs
+        % When generated, the dimensions of the matrix will be 
+        % arg1 = rows = number of inputs
+        % arg2 = cols = number of outputs
 
         bias
-        %Bias Vector to add to each neuron/row of input * weight matrix.
-        %   Variable is either specified by the client or generated using
-        %   random values uniformly distributed in the range [-1, +1]
+        % Bias Vector to add to each neuron/row of input * weight matrix.
+        % Variable is either specified by the client or generated using
+        % random values uniformly distributed in the range [-1, +1]
         %
-        %   When generated, the vector will be
-        %   length = arg2 = number of outputs
+        % When generated, the vector will be
+        % length = arg2 = number of outputs
 
         transfer_function
-        %Transfer Function is a string that specifies if a Hard Limit("harmlim") or 
-        %   Symmetrical Hard Limit("harlims") private transfer function will be used.
+        % Transfer Function is a string that specifies if a Hard Limit("harmlim") or 
+        % Symmetrical Hard Limit("harlims") private transfer function will be used.
 
-        n
-        %holds the result before the forward function to allow
-        %backprop
+        n % net input of the layer
 
-        in %layer inputs 
+        in % layer input
 
-        out % layer outputs after the transfer function
+        out % layer output after the transfer function
 
         s % layer sensitivities 
 
@@ -55,24 +55,20 @@ classdef BackPropLayer
 
         AS = []; % all outputs calculated for a batch of inputs
 
-        allS = []; % all sensativities calculated for a batch of inputs
+        allS = []; % all sensitivities calculated for a batch of inputs
 
     end
 
     methods
         function obj = BackPropLayer(arg1, arg2, transfer_function)
-            %BackPropLayer constructs an instance of this class
-            %   @param arg1  
-            %               Represents
-            %               the number of inputs the layer will
-            %               take, or the weight matrix
-            %   @param arg2 Eepresents
-            %               the number of outputs the layer will
+            %BACKPROPLAYER constructs an instance of this class
+            %   @param arg1 Represents the number of inputs the layer will take,
+            %               or the weight matrix
+            %   @param arg2 Represents the number of outputs the layer will
             %               output, or the bias vector  
             %   @param transfer_function specifies the type of transfer
             %                            function to use in the 
-            %                            layer.
-            %                            
+            %                            layer.            
 
             if size(arg1) == 1
                 % If arg1 and arg2 are scalars, then generate a weight
@@ -90,38 +86,42 @@ classdef BackPropLayer
                 obj.bias = arg2;
             end
 
-            % Assign the transfer_function string to the transfer_function property.
+            % Assign the transfer_function
             obj.transfer_function = transfer_function;
         end % end of constructor
 
         function [obj] = forward(obj, input)
-           %forward takes the object and input vector and produces the
-            %output from the layer after the transfer function
-            %performs multiplication between the weight matrix and input vector and then adds the bias vector to 
-            %the result before performing the transfer function
+            %FORWARD takes the object and input vector and produces the output.
+            %   @param input the input vector to the layer, of size (Rx1) where
+            %                R is the number of inputs to the network. 
+            %   uses function a = Wp + B, where a is the output vector, W is the
+            %   weight matrix, p is the input vector and B is the bias vector, 
+            %   to calculate the output of the layer
            
             obj.in = input;
-            output = obj.bias + (obj.weight*input);
-            obj.n = output;%before transfer function
+            output = obj.bias + (obj.weight*input); % wp+b
+            obj.n = output; % before transfer function
+
             switch(obj.transfer_function)% transfer functions
                 case('logsig')
-                   obj.out = obj.logsig_(output')';% return output after transfer function
+                   obj.out = obj.logsig_(output')'; % output with logsig
                 case('purelin')
-                   obj.out = obj.purelin_(output')';% return output after transfer function
+                   obj.out = obj.purelin_(output')'; % output with purelin
             end
         end % end of forward function
 
         function print(obj) 
-            %Prints weights and biases to console
+            %PRINT Prints weights and biases to console
             disp("Weights");
             disp(obj.weight);
             disp("Biases");
             disp(obj.bias);
-        end
+        end % end of print function
 
         function [obj] = firstSensitivity(obj,t)
-            %calculates the sensativity for the layer at the end of the
-            %network using the equation s = -2dF(n)(t-a)
+            %FIRSTSENSITIVITY calculates the sensativity for the final layer
+            %   @param t the expected output of the network
+            %   calculates sensitivity of layer with formula: s = -2dF(n)(t-a)
 
             switch(obj.transfer_function)% transfer functions
                 case('logsig')
@@ -132,9 +132,10 @@ classdef BackPropLayer
         end % end of firstSensitivity function
 
         function [obj] = Sensitivity(obj,s2,w2)
-            %calculates the sensativity for all layers except the final
-            %layer by using backpropagation of the previous calculated
-            %sensativities and previous layers weight. s = dF(n)Ws
+            %SENSITIVITY calculates the sensativity of layers (not final)
+            %   @param s2 sensitivity matrix of next layer
+            %   @param w2 weight matrix of next layer
+            %   calculates sensitivity of layer with formula: s = dF(n)Ws
 
             switch(obj.transfer_function)% transfer functions
                 case('logsig')
@@ -145,35 +146,47 @@ classdef BackPropLayer
         end % end of Sensitivity function
 
         function obj = newWeight(obj,learningRate, prevA)
-            %calculates the updated weight by using the equation 
-            % new W = old W - as *prevA
+            %NEWWEIGHT updates new weights for layer.
+            %   @param learning rate stable learning rate
+            %   @param prevA previous layer output
+
+            % new W = old W - alpha * sensititivities * prevA'
             obj.w2 = obj.weight - (learningRate*obj.s.*prevA');
         end
 
         function grad = calcGradient(obj,prevA)
-            %provides the gradient for functions in the Network class
+            %CALCGRADIENT calculates the gradient of the layer
+            %   @param prevA layer output
+
             grad = obj.s.*prevA';
         end
 
         function obj = newBatchWeight(obj,learningRate,q)
-            %batch propagation version of the weight calculation
+            %NEWBATCHWEIGHT updates new weights for batch update
+            %   @param q batch size
+            
             obj.weight = obj.weight - ((learningRate /q)*obj.AS);
         end
         
         function obj = newBatchBias(obj,learningRate,q)
-            %batch propagation version of the bias calculation
+            %NEWBATCHWEIGHT updates new biases for batch update
+            %   @param q batch size
             obj.bias =  obj.bias -((learningRate /q).*obj.allS);
         end
 
         function obj = newBias(obj,learningRate)
-            %bias calculation that uses the equation new b = b - as
+            %NEWBIAS updates new biases for layer.
+            %   @param learning rate stable learning rate
+            %   @param prevA previous layer output
+
+            % new B = old B - alpha * sensitivities
             obj.b2 = obj.bias -( learningRate.*obj.s);
         end
 
         function[obj] = setWeightBias(obj,w,b)
-            %used to update the weights and biases to the inputs and this
-            %allows for initial weights to be set and the new biases and
-            %weights to be set
+            %SETWEIGHTBIAS used to update the weights and biases 
+            %   @param w new weights to be set
+            %   @param b new biases to be set
 
             obj.weight = w;
             obj.bias = b;
@@ -185,22 +198,23 @@ classdef BackPropLayer
         % Private methods to be used within the BackProp Layer
 
         function a = derlogsig(~,p)
-            %returns dervivitive of logsig for calulating the sensativity
+            %DERLOGSIG returns dervivitive of logsig
             a = (eye(length(p)).*((1-p).*p));
             %Verified with example sensitivity calculations 
         end
 
         function a = derpurelin(~,p)
-            a = 1;% dervititive of purelin 
+            %DERPURELIN dervititive of purelin
+            a = 1; 
         end
         
         function a = logsig_(~,p)
-            %equation 1/(1+e^-x)
-            a = logsig(p);%matlab provided function
+            %LOGSIG_ sigmoid transfer function, equation: 1/(1+e^-x)
+            a = logsig(p);
         end
 
         function a = purelin_(~, p)
-            %Symmetrical Hard Limit Transfer Function
+            %PURELIN_ pu
             %   Takes an input p and outputs 1 if the value positive or
             %   outputs 0 if the value is negative.
             %   a = -1, n < 0
