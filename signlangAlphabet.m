@@ -88,6 +88,10 @@ hold on;
 plot(result(1,:));% plot performance of validation and training set
 plot(result(2,:));
 
+title('Performance of CNN with respect to number of epochs');
+xlabel('Number of epochs'); % Add this line for x-axis label
+ylabel('Mean of Cumulative Mean Squared Error'); % Add this line for y-axis label
+
 hold off;
 legend('Training Data', 'Validation Data');
 %test
