@@ -1,7 +1,7 @@
-classdef NetworkBackpropagation
-    %NetworkBackpropagation is responsible for the operations on the whole
-    %neural network and will calculate the forward output, and complete
-    %backpropagation
+.classdef NetworkBackpropagation
+    %NETWORKBACKPROPAGATION is responsible for the operations on the whole
+    % neural network and will calculate the forward output, and implement
+    % backpropagation algorithm to update the weights and biases in the network.
     % Methods:
     %    - NetworkBackpropagation (constructor)
     %    - flattenOutput
