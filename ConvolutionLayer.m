@@ -1,15 +1,28 @@
 classdef ConvolutionLayer
-     %CONVOLUTIONLAYER implements a netowrk layer that calculates the
-     %convoliution, activation, and pooling
+     %CONVOLUTIONLAYER implements a network layer that calculates the
+     % convolution, activation, and pooling
      % Methods:
      %    - ConvolutionLayer
      %    - forward
      %    - pooling
      %    - Sensitivity
+     %    - flattenOutput
+     %    - convertOutputSize
+     %    - vectorSensitivity (first sensitivity)
+     %    - newWeight
+     %    - calGradient
+     %    - newBatchWeight
+     %    - newBatchBias
+     %    - newBias
+     %    - newWeight
+     %    - setWeightBias
      % transfer functions
-     %    - purelin
-     %    - logsig
      %    - relu
+     %    - derrelu
+     %    - logsig
+     %    - derlogsig
+     %    - purelin
+     %    - derpurelin
 
      properties
         Kernels 
