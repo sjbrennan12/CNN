@@ -6,13 +6,9 @@ classdef ConvolutionLayer1 < handle
      %    - forward
      %    - maxPool
      %    - firstSensitivity
-     %    - uppool
+     %    - depool
      %    - Sensitivity
      %    - print
-     %    - calcGradient
-     %    - newBias
-     %    - setWeightBias
-     %    - newWeight
      % transfer functions:
      %    - (relu)
      %    - derrelu
@@ -45,9 +41,11 @@ classdef ConvolutionLayer1 < handle
 
         convOut % output after convolution + bias
 
-        s % sensitivity 
+        s % sensitivity of layer passed to next layer
 
-        p % pool layer: result after pooling
+        p % pool layer: result after depooling
+
+        dLZ % the sensitivites that are depooled, used for calculating param update
 
         cood % pool coordinates of max pool 
 
@@ -160,43 +158,42 @@ classdef ConvolutionLayer1 < handle
             
             dF_n = derrelu(obj,obj.n); % size: (height x weight x depth)
 
-            % flatten the vector
+            % flatten the net input to a vector
             [row, col, depth] = size(dF_n);
             df_n = reshape(permute(dF_n, [2, 1, 3]),[row * col * depth,1]);
             df_n = df_n';
 
             % propagate sensitivities backward
             jacob_matrix = diag(df_n);
-            obj.b2 = jacob_matrix;
-            sensitivity = (jacob_matrix * w2') * s2;
+            sensitivities = (jacob_matrix * w2') * s2;
 
             %reshape sensitivities
             [rows, cols, depth] = size(obj.out);
             total_elements = rows * cols * depth;
-            if length(sensitivity) ~= total_elements
+            if length(sensitivities) ~= total_elements
                 error("incorrenct dimentions of new sensitivity matrix")
             end
-            reshaped_matrix = reshape(sensitivity, cols, rows, depth);
+            reshaped_matrix = reshape(sensitivities, cols, rows, depth);
             reshaped_matrix = permute(reshaped_matrix, [2, 1, 3]);
 
-            % uppool sensitivities
-            sensitivity_matrix = uppool(obj, reshaped_matrix);
+
+            % depool sensitivities
+            depooled_matrix = depool(obj, reshaped_matrix);
+            obj.dLZ = depooled_matrix;
+            
+            %do reverse convolutin to get the sensitivity matrix of backprop
+            sensitivity_matrix = flippedConvolution(obj,depooled_matrix);
             obj.s = sensitivity_matrix;
 
-            % sens = padSensitivity(obj, sensitivity_matrix);
-            % obj.Kernel2 = sens;
-
-
-            
-           %continue by taking the pool and recreating the original input 3d matrix with the coordinates
-           %the coordinates get the sensitivity everything else is 0
         end % end of firstSensitivity function
 
-        function original = uppool(obj, matrix) 
-            % [pool_h,pool_w,pool_c, ~] = size(obj.cood);
+        function original = depool(obj, matrix) 
             [matrix_h, matrix_w, matrix_c] = size(matrix);
 
-            original = zeros(size(obj.convOut));
+            original = zeros(size(obj.convOut)); % depooled matrix
+
+            % loop through the matrix and find the coordinates of the pooled
+            % matrix and place it in the depooled matrix
             for c = 1:matrix_c
                 for h = 1:matrix_h
                     for w =1:matrix_w
@@ -211,43 +208,74 @@ classdef ConvolutionLayer1 < handle
             end
         end % end of function uppool
 
-        function obj = Sensitivity(obj, s2, k2)
-            % UPDATESENSITIVITY updates the sensitivity from the next convolutional layer to the current convolutional layer
+        function obj = Sensitivity(obj, s2)
+            %SENSITIVITY updates the sensitivity from the next convolutional 
+            % layer to the current convolutional layer
             %   @param s2 sensitivity matrix of the next convolutional layer
             %   @param k2 kernels of the next convolutional layer
-            %   @return sensitivity sensitivity matrix of the current convolutional layer
+            %   @return obj with sensitivity calculated
         
-            sensitivity = zeros(size(obj.out)); % Initialize sensitivity matrix
-            % Loop through each output channel of the next layer
-            for i = 1:obj.numOutputs
-                % Loop through each input channel of the next layer
-                for j = 1:obj.kernelDepth
-                    % Compute derivative of activation function (ReLU)
-                    dF_n = derrelu(obj, obj.n(:,:,i));
-                    
-                    % Rotate kernel for convolution
-                    rotatek_kernel = rot90(rot90(k2(:,:,j,i)));
-                    
-                    % Perform convolution operation
-                    rot_conv = conv2(s2(:,:,i), rotatek_kernel, 'valid');
-                    disp(size(dF_n));
-                    disp(size(rot_conv));
+            
+            %depool
+            deppoled_matrix = depool(obj,s2);
+            obj.dLZ = deppoled_matrix;
 
-                    % Reshape rot_conv to match the size of dF_n
-                    rot_conv_resized = imresize(rot_conv, size(dF_n));
-                    % Compute sensitivity contribution
-                    sensitivity(:,:,j,i) = dF_n .* rot_conv_resized; % Element-wise multiplication
-                    
-                    % Uncomment the following line if you want to visualize the sizes for debugging
-                    % disp(size(sensitivity(:,:,j,i)));
+            %sensitivities
+            sensitivities = flippedConvolution(obj,deppoled_matrix);
+            obj.s = sensitivities;
+        end  % end of sensitivity function
+
+        function sensitivty = flippedConvolution(obj,depooled_matrix)
+            %FLIPPEDCONVOLUTION performs reverse convolution to get sensitivity
+            %   @param depooled_matrix matrix to perform reverse convolution on
+            %   @return obj after sensitivity calculation
+
+            % get dimentions of input and depooled matrix
+            [in_h, in_w, in_c] = size(obj.in);
+            d_c = size(depooled_matrix,3);
+
+            % initialize sensitivity matrix
+            sensitivty = zeros(in_h, in_w, in_c);
+
+            % flip kernel
+            rotKernel = flip(flip(obj.Kernels,1),2);
+
+            % for each input channel, compute the sum of the output with the
+            % flipped kernel.
+            for i=1:in_c
+                for j=1:d_c 
+                    % perform full convolution of sensitivity and flipped kernel
+                    % of the current input channel to directly get the input 
+                    % size. 
+                    reConv = conv2(depooled_matrix(:,:,j), rotKernel(:,:,i));
+
+                    % all all outputs for channel
+                    sensitivty(:,:,i) = sensitivty(:,:,i) + reConv;
+
                 end
             end
-            
-            % Further processing if needed
-            
-            % Update sensitivity property
-            obj.s = sensitivity;
+        end % end of flipppedConvolution function
 
+        function newWeight(obj, alpha)
+            %NEWWEIGHT calculates new weights
+            
+            gradient = zeroes(size(obj.Kernels));
+            for i=1:obj.numOutputs
+                for j=1:obj.kernelDepth
+                    gradient(:,:,j,i) = conv2(obj.in(:,:,j),obj.s(:,:,i), "valid");
+                end
+            end
+
+            obj.Kernels = obj.Kernels - alpha * gradient;
+            
+        end %end of calcGradient
+
+        function newBias(obj, alpha)
+            %NEWBIAS update  bias
+            
+            gradient = sum(sum(obj.s, 1),2);
+
+            obj.b = obj.b - alpha * gradient;
         end
         
 
@@ -259,43 +287,6 @@ classdef ConvolutionLayer1 < handle
             disp(obj.b)
         end % end of print function
 
-        function grad = calcGradient(obj,prevA)
-            %provides the gradient for functions in the Network class
-            grad = [];
-            for i=1:length(prevA(1,1,:))
-            %grad(:,:,i) = zeros(length(obj.Kernels(:,1,1,1)),length(obj.Kernels(1,:,1,1)));
-            for j=1:length(obj.s(1,1,:))
-            grad(:,:,i,j) = conv2(obj.s(:,:,j),prevA(:,:,i),"valid");
-            end
-            end
-
-            for i = 1:length(grad(1,1,1,:))
-            for j = 1:length(grad(1,1,:,1))
-            obj.Kernel2(:,:,j,i) = obj.Kernels(:,:,j,i) + grad(:,:,j,i);
-            end
-            end
-        end % end of calcGradeint function
-
-        function obj = newBias(obj,learningRate)
-            % update bias
-            for i=1:obj.numOutputs
-            total = sum(obj.s(:,:,i),'all');
-            total = total / length(obj.s(:,:,1));
-            obj.b2(i) = obj.b(i) - learningRate*total;
-            end
-        end
-
-
-        function[obj] = setWeightBias(obj,w,b)
-            % set weights and biases with given weights and bias matrices
-            obj.Kernels = w;
-            obj.b = b;  
-        end
-
-        function obj = newWeight(obj,learningRate, prevA)
-            % Update kernel
-            obj.Kernel2 = obj.Kernels - learningRate * calcGradient(obj,prevA);
-        end
     end % end of public methods
     methods (Access = private)
         function a = derrelu(~,p)
